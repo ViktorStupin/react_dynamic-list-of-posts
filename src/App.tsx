@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import classNames from 'classnames';
 
 import 'bulma/css/bulma.css';
@@ -10,39 +10,65 @@ import { PostDetails } from './components/PostDetails';
 import { UserSelector } from './components/UserSelector';
 import { Loader } from './components/Loader';
 import { client } from './utils/fetchClient';
-import { User } from './types/User';
 import { Post } from './types/Post';
+import { User } from './types/User';
+
+interface AppState {
+  posts: Post[];
+  selectedPost: Post | null;
+  loading: boolean;
+  error: string | null;
+}
+
+type AppAction =
+  | { type: 'RESET' }
+  | { type: 'START_LOADING' }
+  | { type: 'SET_POSTS'; payload: Post[] }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_SELECTED_POST'; payload: Post | null };
+
+const initialState: AppState = {
+  posts: [],
+  selectedPost: null,
+  loading: false,
+  error: null,
+};
+
+function appReducer(state: AppState, action: AppAction): AppState {
+  switch (action.type) {
+    case 'RESET':
+      return initialState;
+    case 'START_LOADING':
+      return { ...state, loading: true, error: null, selectedPost: null };
+    case 'SET_POSTS':
+      return { ...state, posts: action.payload, loading: false };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    case 'SET_SELECTED_POST':
+      return { ...state, selectedPost: action.payload };
+    default:
+      return state;
+  }
+}
 
 export const App = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(appReducer, initialState);
 
   useEffect(() => {
     if (!selectedUser) {
-      setPosts([]);
-      setSelectedPost(null);
-      setError(null);
-
+      dispatch({ type: 'RESET' });
       return;
     }
 
     const loadPosts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        setSelectedPost(null);
-        const postsData = await client.get<Post[]>(
-          `/posts?userId=${selectedUser.id}`,
-        );
+      dispatch({ type: 'START_LOADING' });
 
-        setPosts(postsData);
-      } catch (err) {
-        setError('Something went wrong!');
-      } finally {
-        setLoading(false);
+      try {
+        const postsData = await client.get<Post[]>(`/posts?userId=${selectedUser.id}`);
+        dispatch({ type: 'SET_POSTS', payload: postsData });
+      } catch {
+        dispatch({ type: 'SET_ERROR', payload: 'Something went wrong!' });
       }
     };
 
@@ -50,12 +76,15 @@ export const App = () => {
   }, [selectedUser]);
 
   const handlePostSelect = (post: Post) => {
-    setSelectedPost(prevPost => (prevPost?.id === post.id ? null : post));
+    dispatch({
+      type: 'SET_SELECTED_POST',
+      payload: state.selectedPost?.id === post.id ? null : post
+    });
   };
 
   const showNoUserSelected = !selectedUser;
-  const showNoPosts = !loading && !error && posts.length === 0;
-  const showPostsList = !loading && !error && posts.length > 0;
+  const showNoPosts = !state.loading && !state.error && state.posts.length === 0;
+  const showPostsList = !state.loading && !state.error && state.posts.length > 0;
 
   return (
     <main className="section">
@@ -75,14 +104,11 @@ export const App = () => {
                   <p data-cy="NoSelectedUser">No user selected</p>
                 )}
 
-                {loading && <Loader />}
+                {state.loading && <Loader />}
 
-                {error && (
-                  <div
-                    className="notification is-danger"
-                    data-cy="PostsLoadingError"
-                  >
-                    Something went wrong!
+                {state.error && (
+                  <div className="notification is-danger" data-cy="PostsLoadingError">
+                    {state.error}
                   </div>
                 )}
 
@@ -94,8 +120,8 @@ export const App = () => {
 
                 {showPostsList && (
                   <PostsList
-                    posts={posts}
-                    selectedPostId={selectedPost?.id || null}
+                    posts={state.posts}
+                    selectedPostId={state.selectedPost?.id || null}
                     onPostSelect={handlePostSelect}
                   />
                 )}
@@ -110,11 +136,11 @@ export const App = () => {
               'is-parent',
               'is-8-desktop',
               'Sidebar',
-              { 'Sidebar--open': selectedPost !== null },
+              { 'Sidebar--open': state.selectedPost !== null },
             )}
           >
             <div className="tile is-child box is-success ">
-              <PostDetails post={selectedPost} />
+              <PostDetails post={state.selectedPost} />
             </div>
           </div>
         </div>

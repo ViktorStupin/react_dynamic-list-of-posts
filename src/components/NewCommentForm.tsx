@@ -1,22 +1,48 @@
 import React, { useState } from 'react';
+import classNames from 'classnames';
 
 interface NewCommentFormProps {
   onSubmit: (name: string, email: string, body: string) => Promise<void>;
   onCancel: () => void;
 }
 
-export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCancel }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [body, setBody] = useState('');
-  const [errors, setErrors] = useState({ name: '', email: '', body: '' });
+interface FormState {
+  name: string;
+  email: string;
+  body: string;
+}
+
+interface FormErrors {
+  name: string;
+  email: string;
+  body: string;
+}
+
+const initialFormState: FormState = {
+  name: '',
+  email: '',
+  body: '',
+};
+
+const initialErrors: FormErrors = {
+  name: '',
+  email: '',
+  body: '',
+};
+
+export const NewCommentForm: React.FC<NewCommentFormProps> = ({
+  onSubmit,
+  onCancel
+}) => {
+  const [form, setForm] = useState<FormState>(initialFormState);
+  const [errors, setErrors] = useState<FormErrors>(initialErrors);
   const [submitting, setSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors = {
-      name: name.trim() ? '' : 'Name is required',
-      email: email.trim() ? '' : 'Email is required',
-      body: body.trim() ? '' : 'Enter some text',
+      name: form.name.trim() ? '' : 'Name is required',
+      email: form.email.trim() ? '' : 'Email is required',
+      body: form.body.trim() ? '' : 'Enter some text',
     };
 
     setErrors(newErrors);
@@ -32,10 +58,9 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCanc
 
     setSubmitting(true);
     try {
-      await onSubmit(name, email, body);
-      setBody(''); // Clear only the body after successful submit
-    } catch (error) {
-      // Error handling without console.error
+      await onSubmit(form.name, form.email, form.body);
+      setForm(prev => ({ ...prev, body: '' }));
+    } catch {
       setErrors(prev => ({ ...prev, body: 'Failed to submit comment' }));
     } finally {
       setSubmitting(false);
@@ -43,13 +68,12 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCanc
   };
 
   const handleReset = () => {
-    setName('');
-    setEmail('');
-    setBody('');
-    setErrors({ name: '', email: '', body: '' });
+    setForm(initialFormState);
+    setErrors(initialErrors);
   };
 
-  const clearError = (field: keyof typeof errors) => {
+  const handleChange = (field: keyof FormState, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
     setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
@@ -66,12 +90,9 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCanc
             name="name"
             id="comment-author-name"
             placeholder="Name Surname"
-            className={`input ${errors.name ? 'is-danger' : ''}`}
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              clearError('name');
-            }}
+            className={classNames('input', { 'is-danger': errors.name })}
+            value={form.name}
+            onChange={(e) => handleChange('name', e.target.value)}
           />
 
           <span className="icon is-small is-left">
@@ -106,12 +127,9 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCanc
             name="email"
             id="comment-author-email"
             placeholder="email@test.com"
-            className={`input ${errors.email ? 'is-danger' : ''}`}
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              clearError('email');
-            }}
+            className={classNames('input', { 'is-danger': errors.email })}
+            value={form.email}
+            onChange={(e) => handleChange('email', e.target.value)}
           />
 
           <span className="icon is-small is-left">
@@ -145,12 +163,9 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCanc
             id="comment-body"
             name="body"
             placeholder="Type comment here"
-            className={`textarea ${errors.body ? 'is-danger' : ''}`}
-            value={body}
-            onChange={(e) => {
-              setBody(e.target.value);
-              clearError('body');
-            }}
+            className={classNames('textarea', { 'is-danger': errors.body })}
+            value={form.body}
+            onChange={(e) => handleChange('body', e.target.value)}
           />
         </div>
 
@@ -165,7 +180,7 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({ onSubmit, onCanc
         <div className="control">
           <button
             type="submit"
-            className={`button is-link ${submitting ? 'is-loading' : ''}`}
+            className={classNames('button', 'is-link', { 'is-loading': submitting })}
             disabled={submitting}
           >
             Add

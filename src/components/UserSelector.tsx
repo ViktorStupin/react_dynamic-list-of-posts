@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import classNames from 'classnames';
 import { User } from '../types/User';
 import { client } from '../utils/fetchClient';
+import { useOutsideClick } from '../types/useOutsideClick';
 
 interface UserSelectorProps {
   selectedUser: User | null;
@@ -16,15 +18,18 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  useOutsideClick(dropdownRef, () => {
+    setIsOpen(false);
+  });
+
   useEffect(() => {
     const loadUsers = async () => {
       try {
         setLoading(true);
         const usersData = await client.get<User[]>('/users');
-
         setUsers(usersData);
-      } catch (err) {
-        // Error handling can be added here
+      } catch {
+        // Error handling removed as per requirements
       } finally {
         setLoading(false);
       }
@@ -33,28 +38,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     loadUsers();
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const handleUserClick = (user: User) => {
     onUserSelect(user);
     setIsOpen(false);
   };
 
   const toggleDropdown = () => {
-    setIsOpen(!isOpen);
+    setIsOpen(prev => !prev);
   };
 
   if (loading) {
@@ -73,7 +63,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     <div
       ref={dropdownRef}
       data-cy="UserSelector"
-      className={`dropdown ${isOpen ? 'is-active' : ''}`}
+      className={classNames('dropdown', { 'is-active': isOpen })}
     >
       <div className="dropdown-trigger">
         <button
@@ -96,8 +86,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             <a
               key={user.id}
               href={`#user-${user.id}`}
-              className={`dropdown-item ${selectedUser?.id === user.id ? 'is-active' : ''}`}
-              onClick={e => {
+              className={classNames('dropdown-item', {
+                'is-active': selectedUser?.id === user.id
+              })}
+              onClick={(e) => {
                 e.preventDefault();
                 handleUserClick(user);
               }}
