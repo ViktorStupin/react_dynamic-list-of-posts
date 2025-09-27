@@ -10,13 +10,13 @@ import { PostDetails } from './components/PostDetails';
 import { UserSelector } from './components/UserSelector';
 import { Loader } from './components/Loader';
 import { client } from './utils/fetchClient';
-import { Post } from './types/Post';
 import { User } from './types/User';
+import { Post } from './types/Post';
 
 interface AppState {
   posts: Post[];
   selectedPost: Post | null;
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
 }
 
@@ -30,7 +30,7 @@ type AppAction =
 const initialState: AppState = {
   posts: [],
   selectedPost: null,
-  loading: false,
+  isLoading: false,
   error: null,
 };
 
@@ -39,11 +39,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'RESET':
       return initialState;
     case 'START_LOADING':
-      return { ...state, loading: true, error: null, selectedPost: null };
+      return { ...state, isLoading: true, error: null, selectedPost: null };
     case 'SET_POSTS':
-      return { ...state, posts: action.payload, loading: false };
+      return { ...state, posts: action.payload, isLoading: false };
     case 'SET_ERROR':
-      return { ...state, error: action.payload, loading: false };
+      return { ...state, error: action.payload, isLoading: false };
     case 'SET_SELECTED_POST':
       return { ...state, selectedPost: action.payload };
     default:
@@ -58,6 +58,7 @@ export const App = () => {
   useEffect(() => {
     if (!selectedUser) {
       dispatch({ type: 'RESET' });
+
       return;
     }
 
@@ -65,7 +66,10 @@ export const App = () => {
       dispatch({ type: 'START_LOADING' });
 
       try {
-        const postsData = await client.get<Post[]>(`/posts?userId=${selectedUser.id}`);
+        const postsData = await client.get<Post[]>(
+          `/posts?userId=${selectedUser.id}`,
+        );
+
         dispatch({ type: 'SET_POSTS', payload: postsData });
       } catch {
         dispatch({ type: 'SET_ERROR', payload: 'Something went wrong!' });
@@ -78,13 +82,15 @@ export const App = () => {
   const handlePostSelect = (post: Post) => {
     dispatch({
       type: 'SET_SELECTED_POST',
-      payload: state.selectedPost?.id === post.id ? null : post
+      payload: state.selectedPost?.id === post.id ? null : post,
     });
   };
 
   const showNoUserSelected = !selectedUser;
-  const showNoPosts = !state.loading && !state.error && state.posts.length === 0;
-  const showPostsList = !state.loading && !state.error && state.posts.length > 0;
+  const showNoPosts =
+    !state.isLoading && !state.error && state.posts.length === 0;
+  const showPostsList =
+    !state.isLoading && !state.error && state.posts.length > 0;
 
   return (
     <main className="section">
@@ -104,10 +110,13 @@ export const App = () => {
                   <p data-cy="NoSelectedUser">No user selected</p>
                 )}
 
-                {state.loading && <Loader />}
+                {state.isLoading && <Loader />}
 
                 {state.error && (
-                  <div className="notification is-danger" data-cy="PostsLoadingError">
+                  <div
+                    className="notification is-danger"
+                    data-cy="PostsLoadingError"
+                  >
                     {state.error}
                   </div>
                 )}

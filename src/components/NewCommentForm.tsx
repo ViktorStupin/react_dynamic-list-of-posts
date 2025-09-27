@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // useState використовується нижче
 import classNames from 'classnames';
+import { Comment } from '../types/Comment';
 
 interface NewCommentFormProps {
-  onSubmit: (name: string, email: string, body: string) => Promise<void>;
+  onSubmit: (name: string, email: string, body: string) => Promise<Comment>;
   onCancel: () => void;
 }
 
@@ -34,9 +35,10 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({
   onSubmit,
   onCancel
 }) => {
+  // Використання useState - ESLint тепер має бачити це
   const [form, setForm] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<FormErrors>(initialErrors);
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors = {
@@ -56,14 +58,14 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({
       return;
     }
 
-    setSubmitting(true);
+    setIsSubmitting(true);
     try {
       await onSubmit(form.name, form.email, form.body);
       setForm(prev => ({ ...prev, body: '' }));
     } catch {
       setErrors(prev => ({ ...prev, body: 'Failed to submit comment' }));
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -180,8 +182,8 @@ export const NewCommentForm: React.FC<NewCommentFormProps> = ({
         <div className="control">
           <button
             type="submit"
-            className={classNames('button', 'is-link', { 'is-loading': submitting })}
-            disabled={submitting}
+            className={classNames('button', 'is-link', { 'is-loading': isSubmitting })}
+            disabled={isSubmitting}
           >
             Add
           </button>

@@ -7,14 +7,14 @@ import { NewCommentForm } from './NewCommentForm';
 
 interface PostDetailsState {
   comments: Comment[];
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
   showCommentForm: boolean;
 }
 
 const initialState: PostDetailsState = {
   comments: [],
-  loading: false,
+  isLoading: false,
   error: null,
   showCommentForm: false,
 };
@@ -34,29 +34,37 @@ export const PostDetails: React.FC<PostDetailsProps> = ({ post }) => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
+  const updateComments = (updater: (comments: Comment[]) => Comment[]) => {
+    setState(prev => ({ ...prev, comments: updater(prev.comments) }));
+  };
+
   useEffect(() => {
     if (!post) {
       resetState();
+
       return;
     }
 
     const loadComments = async () => {
       updateState({
-        loading: true,
+        isLoading: true,
         error: null,
-        showCommentForm: false
+        showCommentForm: false,
       });
 
       try {
-        const commentsData = await client.get<Comment[]>(`/comments?postId=${post.id}`);
+        const commentsData = await client.get<Comment[]>(
+          `/comments?postId=${post.id}`,
+        );
+
         updateState({
           comments: commentsData,
-          loading: false
+          isLoading: false,
         });
       } catch {
         updateState({
           error: 'Something went wrong',
-          loading: false
+          isLoading: false,
         });
       }
     };
@@ -64,43 +72,43 @@ export const PostDetails: React.FC<PostDetailsProps> = ({ post }) => {
     loadComments();
   }, [post]);
 
-  const handleAddComment = async (name: string, email: string, body: string) => {
-    if (!post) return;
-
-    try {
-      const newComment = await client.post<Comment>('/comments', {
-        postId: post.id,
-        name,
-        email,
-        body,
-      });
-
-      updateState({
-        comments: [...state.comments, newComment]
-      });
-    } catch {
-      updateState({
-        error: 'Failed to add comment'
-      });
+  const handleAddComment = async (
+    name: string,
+    email: string,
+    body: string,
+  ): Promise<Comment> => {
+    if (!post) {
+      throw new Error('No post selected');
     }
+
+    const newComment = await client.post<Comment>('/comments', {
+      postId: post.id,
+      name,
+      email,
+      body,
+    });
+
+    updateComments(prev => [...prev, newComment]);
+
+    return newComment;
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    const commentToDelete = state.comments.find(comment => comment.id === commentId);
+    const commentToDelete = state.comments.find(
+      comment => comment.id === commentId,
+    );
 
     // Optimistic update
-    updateState({
-      comments: state.comments.filter(comment => comment.id !== commentId)
-    });
+    updateComments(prev => prev.filter(comment => comment.id !== commentId));
 
     try {
       await client.delete(`/comments/${commentId}`);
     } catch {
-      // Restore comment on error
+      // Restore comment on error using functional update
       if (commentToDelete) {
+        updateComments(prev => [...prev, commentToDelete]);
         updateState({
-          comments: [...state.comments, commentToDelete],
-          error: 'Failed to delete comment'
+          error: 'Failed to delete comment',
         });
       }
     }
@@ -120,7 +128,7 @@ export const PostDetails: React.FC<PostDetailsProps> = ({ post }) => {
       </div>
 
       <div className="block">
-        {state.loading && <Loader />}
+        {state.isLoading && <Loader />}
 
         {state.error && (
           <div className="notification is-danger" data-cy="CommentsError">
@@ -128,17 +136,21 @@ export const PostDetails: React.FC<PostDetailsProps> = ({ post }) => {
           </div>
         )}
 
-        {!state.loading && !state.error && state.comments.length === 0 && (
+        {!state.isLoading && !state.error && state.comments.length === 0 && (
           <p className="title is-4" data-cy="NoCommentsMessage">
             No comments yet
           </p>
         )}
 
-        {!state.loading && !state.error && state.comments.length > 0 && (
+        {!state.isLoading && !state.error && state.comments.length > 0 && (
           <>
             <p className="title is-4">Comments:</p>
             {state.comments.map(comment => (
-              <article key={comment.id} className="message is-small" data-cy="Comment">
+              <article
+                key={comment.id}
+                className="message is-small"
+                data-cy="Comment"
+              >
                 <div className="message-header">
                   <a href={`mailto:${comment.email}`} data-cy="CommentAuthor">
                     {comment.name}
@@ -161,7 +173,7 @@ export const PostDetails: React.FC<PostDetailsProps> = ({ post }) => {
           </>
         )}
 
-        {!state.loading && !state.error && !state.showCommentForm && (
+        {!state.isLoading && !state.error && !state.showCommentForm && (
           <button
             data-cy="WriteCommentButton"
             type="button"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import classNames from 'classnames';
 import { User } from '../types/User';
 import { client } from '../utils/fetchClient';
@@ -14,24 +14,27 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   onUserSelect,
 }) => {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useOutsideClick(dropdownRef, () => {
+  const closeDropdown = useCallback(() => {
     setIsOpen(false);
-  });
+  }, []);
+
+  useOutsideClick(dropdownRef, closeDropdown);
 
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        setLoading(true);
+        setIsLoading(true);
         const usersData = await client.get<User[]>('/users');
+
         setUsers(usersData);
       } catch {
-        // Error handling removed as per requirements
+        // Error handling intentionally omitted as per requirements
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -47,7 +50,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     setIsOpen(prev => !prev);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div data-cy="UserSelector" className="dropdown">
         <div className="dropdown-trigger">
@@ -87,9 +90,9 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
               key={user.id}
               href={`#user-${user.id}`}
               className={classNames('dropdown-item', {
-                'is-active': selectedUser?.id === user.id
+                'is-active': selectedUser?.id === user.id,
               })}
-              onClick={(e) => {
+              onClick={e => {
                 e.preventDefault();
                 handleUserClick(user);
               }}
