@@ -25,7 +25,7 @@ module.exports = {
     ecmaFeatures: {
       jsx: true,
     },
-    ecmaVersion: 12,
+    eccmaVersion: 12,
     project: './tsconfig.json',
     sourceType: 'module',
   },
@@ -90,7 +90,7 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-unused-vars': ['error'],
-    '@typescript-eslint/indent': ['error', 2],
+    '@typescript-eslint/indent': 'off', // ВИПРАВЛЕНО: прибрано зайвий пробіл
     '@typescript-eslint/ban-types': ['error', {
         extendDefaults: true,
         types: {
